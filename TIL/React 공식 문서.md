@@ -1,8 +1,8 @@
 # [React 공식문서](https://ko.reactjs.org/docs/hello-world.html) 읽고 정리하기
-1. [JSX 소개](#1.-jsx-소개)
-2. [엘리먼트 렌더링](#2.-엘리먼트-렌더링)
-3. [Components와 Props](#3.-components와-props)
-4. [State와 생명주기](#4.-state와-생명주기)
+1. [JSX 소개](#1-jsx-소개)
+2. [엘리먼트 렌더링](#2-엘리먼트-렌더링)
+3. [Components와 Props](#3-components와-props)
+4. [State와 생명주기](#4-state와-생명주기)
 
 <br/>
 
@@ -43,7 +43,7 @@
   - 태그가 비어있다면 XML처럼 /> 를 이용해 닫아주어야 하며 혹은 자식을 포함할 수 있다.
 <br/>
 
-- JSX는 주입 공격을 방지한다
+- JSX는 주입 공격을 방지한다.
   ```javascript
   render() {
     let codes = "<b>Will This Work?</b>";
@@ -93,8 +93,10 @@
   ```javascript
   function tick() {
     const element = (
-      <div><h1>Hello, world!</h1>
-      <h2>It is {new Date().toLocaleTimeString()}.</h2></div>
+      <div>
+        <h1>Hello, world!</h1>
+        <h2>It is {new Date().toLocaleTimeString()}.</h2>
+      </div>
     );
     ReactDOM.render(element, document.getElementById('root'));  // <h2>부분만 업데이트
   }
@@ -178,3 +180,120 @@
 <br/>
 
 ## 4. State와 생명주기
+- 이전 섹션인 [엘리먼트 렌더링](#2-엘리먼트-렌더링)에서의 시계 예제 코드를 리팩토링 해보자.
+  ```javascript
+  function Clock(props) {
+    return (
+      <div>
+        <h1>Hello, world!</h1>
+        <h2>It is {props.date.toLocaleTimeString()}.</h2>
+      </div>
+    );
+  }
+
+  function tick() {
+    ReactDOM.render(
+      <Clock date={new Date()} />, document.getElementById('root')
+    );
+  }
+  setInterval(tick, 1000);
+  ```
+  - Clock 컴포넌트를 완전히 재사용하고 캡슐화 하면 Clock은 스스로 타이머를 설정하고 매초 스스로 업데이트 한다.
+  - 그러나 위 코드는 타이머를 설정하고 매초 UI를 업데이트하는 것이 누락되어 있다.
+  - 이를 위해 Clock 컴포넌트에 state를 추가한다. State는 props와 유사하지만, 비공개이며 컴포넌트에 완전히 제어된다.
+<br/>
+
+- 클래스로 변환 뒤 로컬 state 추가하기
+  ```javascript
+  class Clock extends React.Component {
+    constructor(props) {   // state 생성 (초기 this.state 지정)
+      super(props);
+      this.state = {date: new Date()};
+    }
+
+    render() {
+      return (
+        <div>
+          <h1>Hello, world!</h1>
+          <h2>It is {this.state.date.toLocaleTimeString()}.</h2>
+        </div>
+      );
+    }
+  }
+  
+  ReactDOM.render(
+    <Clock />, document.getElementById('root')
+  );
+  ```
+  - constructor(props)를 보면 알 수 있듯이, 클래스 컴포넌트는 항상 props로 기본 constructor를 호출해야 한다. 
+  - 타이머 코드는 아직 없으며, props를 state로 변경하는 거 까지 완료되었다.
+<br/>
+
+- 생명주기 메서드를 클래스에 추가하기
+  ```javascript
+  class Clock extends React.Component {
+   // 위와 동일
+    componentDidMount() {   // 컴포넌트 출력물이 DOM에 렌더링 된 후에 실행
+      this.timerID = setInterval(
+        () => this.tick(), 1000
+      );
+    }
+
+    componentWillUnmount() {
+      clearInterval(this.timerID);
+    }
+
+    tick() {   // Clock 컴포넌트가 매초 작동하도록 하는 메서드
+      this.setState({   // 컴포넌트 로컬 state를 업데이트
+        date: new Date()
+      });
+    }
+    // 위와 동일
+  }
+  ```
+  - Clock이 처음 DOM에 렌더링 될 때마다 타이머를 설정하려고 한다. 이것은 React에서 “마운팅”이라고 한다.
+  - Clock에 의해 생성된 DOM이 삭제될 때마다 타이머를 해제하려고 한다. 이것은 React에서 “언마운팅”이라고 한다.
+  - 컴포넌트 클래스에서 메서드(생명주기 메서드)를 선언하여 마운트되거나 언마운트 시 특정 기능을 수행할 수 있다.
+  - 위 코드에서 tick() 메서드에 있듯이, state 업데이트는 setState()를 통해서 가능하다.
+<br/>
+
+- State를 올바르게 사용하기
+  - 직접 State를 수정하면 안된다. setState 없이 수정해봤자 렌더링 안된다.
+  - State 업데이트는 비동기적일 수도 있다.
+    ```javascript
+    this.setState({   // Wrong
+      counter: this.state.counter + this.props.increment,
+    });
+    ```
+    ```javascript
+    this.setState((state, props) => ({   // Correct
+      counter: state.counter + props.increment
+    }));
+    ```
+     - React는 성능을 위해 여러 setState() 호출을 단일 업데이트로 한꺼번에 처리할 수 있다.
+     - 따라서 this.props와 this.state가 비동기적일 수 있기 때문에 다음 state 계산에 해당 값들을 의존해서는 안 된다.
+  - State 업데이트는 병합된다.
+    ```javascript
+    componentDidMount() {
+      fetchPosts().then(response => {
+        this.setState({
+          posts: response.posts
+        });
+      });
+      fetchComments().then(response => {
+        this.setState({
+          comments: response.comments
+        });
+      });
+    }
+    ```
+    - setState()를 호출할 때 React는 제공한 객체를 현재 state로 병합한다.
+    - 별도의 state가 독립적인 변수를 포함한다면 위처럼 setState() 호출로 변수를 독립적으로 업데이트할 수 있다.
+    - 병합은 얕게 이루어지기 때문에 this.setState({comments})는 this.state.posts에 영향을 주지 않는다.
+<br/>
+
+- 데이터는 아래로 흐른다.
+  - state는 로컬 또는 캡슐화라고도 불린다. state를 소유한 컴포넌트 이외에는 접근할 수 없습니다.
+  - 컴포넌트는 자신의 state를 자식 컴포넌트에 props로 전달할 수 있다.
+  - state로부터 파생된 UI 또는 데이터는 오직 트리구조에서 자신의 “아래”에 있는 컴포넌트에만 영향을 미친다.
+<br/>
