@@ -3,6 +3,7 @@
 2. [엘리먼트 렌더링](#2-엘리먼트-렌더링)
 3. [Components와 Props](#3-components와-props)
 4. [State와 생명주기](#4-state와-생명주기)
+5. [이벤트 처리하기](#5-이벤트-처리하기)
 
 <br/>
 
@@ -297,3 +298,126 @@
   - 컴포넌트는 자신의 state를 자식 컴포넌트에 props로 전달할 수 있다.
   - state로부터 파생된 UI 또는 데이터는 오직 트리구조에서 자신의 “아래”에 있는 컴포넌트에만 영향을 미친다.
 <br/>
+
+## 5. 이벤트 처리하기
+- React에서 이벤트를 처리하는 방식은 DOM에서의 방식과 유사하지만 몇 가지 문법 차이는 있다.
+  ```javascript
+  <button onclick="activateLasers()"> // HTML은 onclick이 소문자이며 "" 문자열
+    Activate Lasers
+  </button>
+  ```
+  ```javascript
+  <button onClick={activateLasers}> // JSX는 camelCase이고 { } 함수
+    Activate Lasers
+  </button>
+  ```
+  - React의 이벤트는 소문자 대신 캐멀 케이스(camelCase)를 사용한다.
+  - JSX를 사용하여 문자열이 아닌 함수로 이벤트 핸들러를 전달한다.
+<br/>
+
+- React에서는 false를 반환해도 기본 동작을 방지할 수 없다. 반드시 preventDefault를 명시적으로 호출해야 한다. 
+  ```javascript
+  <form onsubmit="console.log('You clicked submit.'); return false">
+    <button type="submit">Submit</button>   // HTML은 return false면 action이 실행되지 않음
+  </form>
+  ```
+  ```javascript
+  function Form() {
+    function handleSubmit(e) { // e는 합성이벤트
+      e.preventDefault();
+      console.log('You clicked submit.');
+    }
+    return (
+      <form onSubmit={handleSubmit}>
+        <button type="submit">Submit</button>
+      </form>
+    );
+  }
+  ```
+  - 여기서 e는 합성이벤트이다. React는 W3C 명세에 따라 합성 이벤트를 정의한다.
+<br/>
+
+- React에선 addEventListener를 호출할 필요가 없이 엘리먼트가 처음 렌더링 될 때 리스너를 제공하면 된다.
+  - ES6 클래스를 사용하여 컴포넌트를 정의할 떄, 일반적으로 이벤트 핸들러를 클래스의 메서드로 만든다.
+    ```javascript
+    class Toggle extends React.Component {
+      constructor(props) {
+        super(props);
+        this.state = {isToggleOn: true};
+        // 콜백에서 `this`가 작동하려면 아래와 같이 바인딩 해주어야 합니다.
+        this.handleClick = this.handleClick.bind(this);
+      }
+
+      handleClick() {
+        this.setState(prevState => ({
+          isToggleOn: !prevState.isToggleOn
+        }));
+      }
+
+      render() {
+        return (
+          <button onClick={this.handleClick}>
+            {this.state.isToggleOn ? 'ON' : 'OFF'}
+          </button>
+        );
+      }
+    }
+
+    ReactDOM.render(
+      <Toggle />, document.getElementById('root')
+    );
+    ``` 
+    - JSX 콜백 안에서 this의 의미는. 우선, JavaScript에서의 클래스 메서드는 기본적으로 바인딩이 되어 있지 않다.
+    - this.handleClick을 바인딩 하지 않고 onClick에 전달하면, 함수가 실제 호출될 때 this는 undefined가 된다. 
+    - onClick={this.handleClick}과 같이 뒤에 ()를 사용하지 않고 메서드를 참조할 경우, 메소드를 바인딩 해야 한다.
+  - 실험적인 퍼블릭 클래스 필드 문법을 사용한다면, 클래스 필드를 사용하여 콜백을 바인딩 할 수 있다.
+    ```javascript
+    class LoggingButton extends React.Component {
+      // 이 문법은 `this`가 handleClick 내에서 바인딩되도록 합니다.
+      // 주의: 이 문법은 *실험적인* 문법입니다.
+      handleClick = () => {
+        console.log('this is:', this);
+      }
+
+      render() {
+        return (
+          <button onClick={this.handleClick}>
+            Click me
+          </button>
+        );
+      }
+    }
+    ``` 
+    - Create React App에서는 이 문법이 기본적으로 설정되어 있다.
+  - 클래스 필드 문법을 사용하고 있지 않다면, 콜백에 화살표 함수를 사용하는 방법도 있다. 
+    ```javascript
+    class LoggingButton extends React.Component {
+      handleClick() {
+        console.log('this is:', this);
+      }
+
+      render() {
+      // 이 문법은 `this`가 handleClick 내에서 바인딩되도록 합니다.
+        return (
+          <button onClick={() => this.handleClick()}>
+            Click me
+          </button>
+        );
+      }
+    }
+    ``` 
+    - 이 문법의 문제점은 LoggingButton이 렌더링될 때마다 다른 콜백이 생성된다는 것이다. 
+    - 콜백이 하위 컴포넌트에 props로서 전달된다면 그 컴포넌트들은 추가로 다시 렌더링을 수행할 수도 있다. 
+    - 이러한 종류의 성능 문제를 피하고자, 생성자 안에서 바인딩하거나 클래스 필드 문법을 사용하는 것을 권장한다.
+<br/>
+
+- 이벤트 핸들러에 인자 전달하기
+  ```javascript
+  <button onClick={(e) => this.deleteRow(id, e)}>Delete Row</button>
+  <button onClick={this.deleteRow.bind(this, id)}>Delete Row</button>
+  ```
+  - 위 두 줄은 동등하며 두 경우 모두 React 이벤트를 나타내는 e 인자가 ID 뒤에 두 번째 인자로 전달된다.
+  - 화살표 함수는 명시적으로 인자를 전달해야 하지만 bind를 사용할 경우 추가 인자가 자동으로 전달된다.
+<br/>
+
+
