@@ -4,6 +4,8 @@
 3. [Components와 Props](#3-components와-props)
 4. [State와 생명주기](#4-state와-생명주기)
 5. [이벤트 처리하기](#5-이벤트-처리하기)
+6. [조건부 렌더링](#6-조건부-렌더링)
+7. [리스트와 Key](#7-리스트와-key)
 
 <br/>
 
@@ -420,4 +422,223 @@
   - 화살표 함수는 명시적으로 인자를 전달해야 하지만 bind를 사용할 경우 추가 인자가 자동으로 전달된다.
 <br/>
 
+## 6. 조건부 렌더링
+- React에서 조건부 렌더링은 JavaScript에서처럼 if 같은 조선부 연산자로 동작한다.
+  ```javascript
+  function Greeting(props) {
+    const isLoggedIn = props.isLoggedIn;
+    if (isLoggedIn) {
+      return <UserGreeting />; // 로그인 시 나타낼 컴포넌트
+    }
+    return <GuestGreeting />;  // 로그인 안했을 때 나타낼 컴포넌트
+  }
+  
+  ReactDOM.render(
+    <Greeting isLoggedIn={false} />, // Try changing to isLoggedIn={true}
+    document.getElementById('root')
+  );
+  ```
+  - 위 코드는 isLoggedIn prop에 따라서 다른 인사말(컴포넌트)을 렌더링 한다.
+<br/>
 
+- 엘리먼트 변수 사용하기 (컴포넌트의 일부만 조건부 렌더링)
+  ```javascript
+  class LoginControl extends React.Component {
+    constructor(props) {
+      super(props);
+      this.handleLoginClick = this.handleLoginClick.bind(this);
+      this.handleLogoutClick = this.handleLogoutClick.bind(this);
+      this.state = {isLoggedIn: false};
+    }
+    
+    handleLoginClick() { this.setState({isLoggedIn: true}); }
+    handleLogoutClick() { this.setState({isLoggedIn: false}); }
+    
+    render() {
+      const isLoggedIn = this.state.isLoggedIn;
+      let button;
+      if (isLoggedIn) {
+        button = <LogoutButton onClick={this.handleLogoutClick} />;
+      } else {
+        button = <LoginButton onClick={this.handleLoginClick} />;
+      }
+      
+      return (
+        <div>
+          <Greeting isLoggedIn={isLoggedIn} />
+          {button}
+        </div>
+      );
+    }
+  }
+  ```
+  - LoginControl 컴포넌트는 현재 상태에 맞게 <LoginButton />이나 <LogoutButton />을 렌더링한다.
+  - 또한 이전 예시에서의 <Greeting />도 함께 렌더링한다.
+<br/>
+
+- if문이 아닌 다른 조건부 연산자 사용하기
+  ```javascript
+  {unreadMessages.length > 0 &&
+    <h2>
+      You have {unreadMessages.length} unread messages.
+    </h2>
+  }
+  ```
+  ```javascript
+  {isLoggedIn
+    ? <LogoutButton onClick={this.handleLogoutClick} />
+    : <LoginButton onClick={this.handleLoginClick} />
+  }
+  ```
+  - && 뒤의 엘리먼트는 조건이 true일때 출력된다. 조건이 false라면 React는 무시하고 건너뛴다.
+  - condition ? true: false를 사용해서도 조건부 렌더링이 가능하다.
+<br/>
+
+- 컴포넌트가 렌더링하는 것을 막기
+  ```javascript
+  function WarningBanner(props) {
+    if (!props.warn) return null;
+    return (
+      <div className="warning">Warning!</div>
+    );
+  }
+  
+  class Page extends React.Component {
+    constructor(props) {
+      super(props);
+      this.state = {showWarning: true};
+      this.handleToggleClick = this.handleToggleClick.bind(this);
+    }
+  
+    handleToggleClick() {
+      this.setState(state => ({
+        showWarning: !state.showWarning
+      }));
+    }
+  
+    render() {
+      return (
+        <div>
+          <WarningBanner warn={this.state.showWarning} />
+          <button onClick={this.handleToggleClick}>
+            {this.state.showWarning ? 'Hide' : 'Show'}
+          </button>
+        </div>
+      );
+    }
+  }
+  ```
+  - 컴포넌트 자체를 숨기고 싶다면 렌더링 결과를 출력하는 대신 null을 반환해준다.
+  - 위 코드에서는 `<WarningBanner />`가 warn prop이 false라면 컴포넌트는 렌더링하지 않게 된다.
+  - 컴포넌트의 render에서 null을 반환하는 것은 생명주기 메서드 호출에 영향을 주지 않는다.
+<br/>
+
+## 7. 리스트와 Key
+- 여러개의 컴포넌트 렌더링 하기
+  ```javascript
+  const numbers = [1, 2, 3, 4, 5];
+  const listItems = numbers.map((numbers) =>
+    <li>{numbers}</li>
+  );
+  
+  ReactDOM.render(
+    <ul>{listItems}</ul>,
+    document.getElementById('root')
+  );
+  ```
+  - map() 함수로 numbers 배열에 대한 `<li>`엘리먼트를 반환하고 엘리먼트 배열을 listItems에 저장한다.
+  - 그리고 listItems 배열을 `<ul>`엘리먼트 안에 포함하고 DOM에 렌더링한다.
+<br/>
+
+- 기본 리스트 컴포넌트
+  ```javascript
+  function NumberList(props) {
+    const numbers = props.numbers;
+    const listItems = numbers.map((number) =>
+      <li key={number.toString()}>{number}</li>
+    );
+    return (
+      <ul>{listItems}</ul>
+    );
+  }
+
+  const numbers = [1, 2, 3, 4, 5];
+  ReactDOM.render(
+    <NumberList numbers={numbers} />,
+    document.getElementById('root')
+  );
+  ```
+  - 앞선, 여러개의 컴포넌트 렌더링 하기 예제를 하나의 컴포넌트 안에서 렌더링 되도록 리팩토링 한 것이다.
+  - 리스트에는 key(엘리먼트 리스트를 만들 때 포함해야 하는 특수한 문자열 어트리뷰트)가 필요하다.
+<br/>
+
+- Key는 React가 어떤 항목을 변경, 추가 또는 삭제할지 식별하는 것을 돕는다.
+  ```javascript
+  const todoItems = todos.map((todo) =>
+    <li key={todo.id}>
+      {todo.text}
+    </li>
+  );
+  ```
+  - key는 엘리먼트에 안정적인 고유성을 부여하기 위해 배열 내부의 엘리먼트에 지정해야 한다.
+  - 데이터의 ID와 같은 리스트의 다른 항목들에서 항목을 고유하게 식별할 수 있는 문자열을 Key로 선택한다.
+  - 항목의 순서가 바뀔 수 있는 경우 key에 리스트 인덱스를 사용하는 것은 권장하지 않는다.
+<br/>
+
+- Key로 컴포넌트 추출하기
+  ```javascript
+  function ListItem(props) {
+    return <li>{props.value}</li>; // 맞습니다! 여기에는 key를 지정할 필요가 없습니다.
+  }
+  
+  function NumberList(props) {
+    const numbers = props.numbers;
+    const listItems = numbers.map((number) =>
+      <ListItem key={number.toString()} value={number} /> // 맞습니다! 배열 안에 key를 지정해야 합니다.
+    );
+    return (
+      <ul>{listItems}</ul>
+    );
+  }
+  
+  const numbers = [1, 2, 3, 4, 5];
+  ReactDOM.render(
+    <NumberList numbers={numbers} />,
+    document.getElementById('root')
+  );
+  ```
+  - 키는 주변 배열의 context에서만 의미가 있다. (배열을 직접 쓰는 map안에서는 꼭 Key 지정)
+  - ListItem 컴포넌트 안 `<li>` 엘리먼트가 아니라 `<ListItem />` 엘리먼트가 key를 가져야 한다.
+<br/>
+
+- Key는 형제 사이에서만 고유한 값이어야 한다.
+  ```javascript
+  const content = posts.map((post) =>
+    <Post
+      key={post.id}
+      id={post.id}
+      title={post.title} />
+  );
+  ```
+  - Key는 전역적으로 고유할 필요는 없다. 두 개의 다른 배열을 만들 때 동일한 key를 사용할 수 있다.
+  - key는 컴포넌트로 전달되지 않는다. 컴포넌트에서 key가 필요하면 다른 이름의 prop으로 명시적으로 전달한다.
+  - 위 예시에서 Post 컴포넌트는 props.id를 읽을 수 있지만 props.key는 읽을 수 없다.
+<br/>
+
+- JSX에 map() 포함시키기
+  ```javascript
+  function NumberList(props) {
+    const numbers = props.numbers;
+    return (
+      <ul>
+        {numbers.map((number) =>
+          <ListItem key={number.toString()} value={number} />
+        )}
+      </ul>
+    );
+  }
+  ```
+  - JSX를 사용하면 { } 안에 map() 함수의 결과를 인라인 처리할 수 있다.
+  - 하지만 이 방식을 남발하는 것은 좋지 않다. 가독성을 위해 변수로 추출할지, 인라인으로 넣을지는 개발자가 판단해야 한다.
+  - map() 함수가 너무 중첩된다면 컴포넌트로 추출하는 것이 좋다.
+<br/>
