@@ -6,6 +6,8 @@
 5. [이벤트 처리하기](#5-이벤트-처리하기)
 6. [조건부 렌더링](#6-조건부-렌더링)
 7. [리스트와 Key](#7-리스트와-key)
+8. [폼](#8-폼)
+9. [State 끌어올리기](#9-state-끌어올리기)
 
 <br/>
 
@@ -642,3 +644,139 @@
   - 하지만 이 방식을 남발하는 것은 좋지 않다. 가독성을 위해 변수로 추출할지, 인라인으로 넣을지는 개발자가 판단해야 한다.
   - map() 함수가 너무 중첩된다면 컴포넌트로 추출하는 것이 좋다.
 <br/>
+
+## 8. 폼
+- 신뢰 가능한 단일 출처 (single source of truth)
+  - HTML에서 <input>, <textarea>와 같은 폼 엘리먼트는 일반적으로 사용자의 입력을 기반으로 state를 관리하고 업데이트한다.
+  - React에서는 변경할 수 있는 state가 일반적으로 컴포넌트의 state 속성에 유지되며 setState()에 의해 업데이트된다.
+<br/>
+  
+- 제어 컴포넌트 (Controlled Component)
+  ```javascript
+  class NameForm extends React.Component {
+    constructor(props) {
+      super(props);
+      this.state = {value: ''}; // name
+      
+      this.handleChange = this.handleChange.bind(this);
+      this.handleSubmit = this.handleSubmit.bind(this);
+    }
+    
+    handleChange(event) {
+      this.setState({value: event.target.value});
+    }
+    
+    handleSubmit(event) {
+      alert('A name was submitted: ' + this.state.value);
+      event.preventDefault();
+    }
+  
+    render() {
+      return (
+        <form onSubmit={this.handleSubmit}>
+          <label>
+            Name:
+            <input type="text" value={this.state.value} onChange={this.handleChange} />
+          </label>
+          <input type="submit" value="Submit" />
+        </form>
+      );
+    }
+  }
+  ```
+  - value는 폼 엘리먼트에 설정되므로 항상 this.state.value가 표시되며 React state는 신뢰 가능한 단일 출처가 된다.
+  - state를 업데이트하기 위해 모든 키 입력에서 handleChange가 동작해서 사용자가 입력할 때 보여지는 값이 업데이트된다.
+<br/>
+
+- textarea 태그
+  ```javascript
+  <textarea value={this.state.value} onChange={this.handleChange} />
+  ```
+  - HTML에서 `<textarea>`는 텍스트를 자식으로 정의하지만 React에서 `<textarea>`는 value 어트리뷰트를 대신 사용한다.
+<br/>
+
+- select 태그
+  ```javascript
+  this.state = {value: 'coconut'};
+
+  <select value={this.state.value} onChange={this.handleChange}>
+    <option value="grapefruit">Grapefruit</option>
+    <option value="lime">Lime</option>
+    <option value="coconut">Coconut</option>
+    <option value="mango">Mango</option>
+  </select>
+  ```
+  - HTML에서 `<select>`의 selected 옵션은 해당 사항을 초기값으로 설정해주는 어트리뷰트다.
+  - React에서는 selected 어트리뷰트를 사용하는 대신 최상단 select태그에 value 어트리뷰트를 사용한다.
+<br/>
+
+- file input 태그
+  ```javascript
+  <input type="file" />
+  ```
+  - 파일은 값이 읽기 전용이기 때문에 React에서는 비제어 컴포넌트이다.
+<br/>
+
+- 다중 입력 제어하기
+  ```javascript
+  class Reservation extends React.Component {
+    constructor(props) {
+      super(props);
+      this.state = {
+        isGoing: true,
+        numberOfGuests: 2
+      };
+      this.handleInputChange = this.handleInputChange.bind(this);
+    }
+    
+    handleInputChange(event) {
+      const target = event.target;
+      const value = target.type === 'checkbox' ? target.checked : target.value;
+      const name = target.name;
+      
+      this.setState({
+        [name]: value // 주어진 name에 일치하는 state 업데이트 하기 위해 computed property name 구문
+      });
+    }
+
+    render() {
+      return (
+        <form>
+          <label>
+            Is going:
+            <input
+              name="isGoing"
+              type="checkbox"
+              checked={this.state.isGoing}
+              onChange={this.handleInputChange} />
+          </label><br />
+          <label>
+            Number of guests:
+            <input
+              name="numberOfGuests"
+              type="number"
+              value={this.state.numberOfGuests}
+              onChange={this.handleInputChange} />
+          </label>
+        </form>
+      );
+    }
+  }
+  ```
+  - 여러 input을 제어할 때, 각 엘리먼트에 name 어트리뷰트를 추가하고 event.target.name으로 핸들러가 판단하게 해준다.
+  - setState()는 자동적으로 현재 state에 일부 state를 병합하기 때문에 바뀐 부분에 대해서만 호출하면 된다.
+<br/>
+
+- 제어되는 Input Null 값
+  ```javascript
+  ReactDOM.render(<input value="hi" />, mountNode); // 잠겨있지만
+
+  setTimeout(function() {
+    ReactDOM.render(<input value={null} />, mountNode); // 수정 가능해짐
+  }, 1000);
+  ```
+  - 제어 컴포넌트에 value prop을 지정하면 의도하지 않는 한 사용자가 변경할 수 없다.
+  - value를 설정했는데 여전히 수정할 수 있다면 실수로 value를 undefined나 null로 설정했을 수 있다.
+<br/>
+  
+## 9. State 끌어올리기
