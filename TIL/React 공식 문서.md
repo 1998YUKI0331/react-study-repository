@@ -763,7 +763,7 @@
     }
   }
   ```
-  - 여러 input을 제어할 때, 각 엘리먼트에 name 어트리뷰트를 추가하고 event.target.name으로 핸들러가 판단하게 해준다.
+  - 여러 input 제어 시, 각 엘리먼트에 name 어트리뷰트를 추가하고 event.target.name으로 핸들러가 판단한다.
   - setState()는 자동적으로 현재 state에 일부 state를 병합하기 때문에 바뀐 부분에 대해서만 호출하면 된다.
 <br/>
 
@@ -778,5 +778,152 @@
   - 제어 컴포넌트에 value prop을 지정하면 의도하지 않는 한 사용자가 변경할 수 없다.
   - value를 설정했는데 여전히 수정할 수 있다면 실수로 value를 undefined나 null로 설정했을 수 있다.
 <br/>
-  
+
 ## 9. State 끌어올리기
+- 언제 하면 좋나
+  - 종종 동일한 데이터에 대한 변경사항을 여러 컴포넌트에 반영해야 할 필요가 있다.
+  - 이럴 때는 공통 조상으로 state를 끌어올리는 것이 좋다.
+<br/>
+
+- 두 번째 Input 추가하기
+  ```javascript
+  const scaleNames = {
+    c: 'Celsius',
+    f: 'Fahrenheit'
+  };
+  
+  class TemperatureInput extends React.Component {
+    constructor(props) {
+      super(props);
+      this.handleChange = this.handleChange.bind(this);
+      this.state = {temperature: ''};
+    }
+  
+    handleChange(e) {
+      this.setState({temperature: e.target.value});
+    }
+  
+    render() {
+      const temperature = this.state.temperature;
+      const scale = this.props.scale;
+      return (
+        <fieldset>
+          <legend>Enter temperature in {scaleNames[scale]}:</legend>
+          <input value={temperature} onChange={this.handleChange} />
+        </fieldset>
+      );
+    }
+  }
+  ```
+  ```javascript
+  class Calculator extends React.Component {
+    render() {
+      return (
+        <div>
+          <TemperatureInput scale="c" />
+          <TemperatureInput scale="f" />
+        </div>
+      );
+    }
+  }
+  ```
+  - Calculator에서 TemperatureInput 컴포넌트를 빼서 Calculator가 분리된 두 개의 온도 입력 필드를 렌더링한다.
+  - 그러나 Calculator에서 BoilingVerdict에게 온도를 전해줄 수 없다.
+  - 현재 입력된 온도 정보가 TemperatureInput 안에 숨겨져 있으므로 Calculator는 그 값을 알 수 없기 때문이다.
+<br/>
+
+- State 끌어올리기
+  - 섭씨와 화씨가 서로 동기되도록 하고 싶다면 가까운 공통 조상으로 state를 끌어올린다.
+  - TemperatureInput이 개별적으로 가지고 있던 지역 state를 지우고 Calculator로 그 값을 옮겨놓는다.
+  - Calculator는 두 입력 필드의 현재 온도에 대한 진리의 원천(source of truth)이 된다.
+  - 두 TemperatureInput의 props가 같은 부모인 Calculator로부터 전달되기 때문에 항상 동기화된 상태를 유지한다.
+<br/>
+
+- TemperatureInput 변경
+  ```javascript
+  class TemperatureInput extends React.Component {
+    constructor(props) {
+      super(props);
+      this.handleChange = this.handleChange.bind(this);
+    }
+    
+    handleChange(e) {
+      this.props.onTemperatureChange(e.target.value); // Before: this.setState({temperature: e.target.value});
+    }
+  
+    render() {
+      const temperature = this.props.temperature; // Before: const temperature = this.state.temperature;
+      const scale = this.props.scale;
+      return (
+        <fieldset>
+          <legend>Enter temperature in {scaleNames[scale]}:</legend>
+          <input value={temperature} onChange={this.handleChange} />
+        </fieldset>
+      );
+    }
+  }
+  ```
+  - TemperatureInput 컴포넌트에서 this.state.temperature를 this.props.temperature로 대체한다.
+  - props는 읽기 전용이다. 따라서 onTemperatureChange로 이 컴포넌트를 제어가능하게 만들어야 한다.
+  - TemperatureInput은 temperature와 onTemperatureChange props를 부모인 Calculator로부터 건네받을 수 있다.
+  - 이제 TemperatureInput에서 온도를 갱신하고 싶으면 this.props.onTemperatureChange를 호출하면 된다.
+  - onTemperatureChange prop은 부모 컴포넌트인 Calculator로부터 temperature prop와 함께 제공된다.
+<br/>
+
+- Calculator 변경
+  ```javascript
+  class Calculator extends React.Component {
+    constructor(props) {
+      super(props);
+      this.handleCelsiusChange = this.handleCelsiusChange.bind(this);
+      this.handleFahrenheitChange = this.handleFahrenheitChange.bind(this);
+      this.state = {temperature: '', scale: 'c'};
+    }
+  
+    handleCelsiusChange(temperature) {
+      this.setState({scale: 'c', temperature});
+    }
+    handleFahrenheitChange(temperature) {
+      this.setState({scale: 'f', temperature});
+    }
+    
+    render() {
+      const scale = this.state.scale;
+      const temperature = this.state.temperature;
+      const celsius = scale === 'f' ? tryConvert(temperature, toCelsius) : temperature;
+      const fahrenheit = scale === 'c' ? tryConvert(temperature, toFahrenheit) : temperature;
+
+      return (
+        <div>
+          <TemperatureInput
+            scale="c" 
+            temperature={celsius}
+            onTemperatureChange={this.handleCelsiusChange} />
+          <TemperatureInput
+            scale="f"
+            temperature={fahrenheit}
+            onTemperatureChange={this.handleFahrenheitChange} />
+          <BoilingVerdict
+            celsius={parseFloat(celsius)} />
+        </div>
+      );
+    }
+  }
+  ```
+  - 두 입력 필드를 모두 저장하는 건 불필요하다. 최근의 입력값과 단위만 저장하면 된다.
+  - 어떤 입력 필드를 수정하든 간에 Calculator의 this.state.temperature와 this.state.scale이 갱신된다.
+<br/>
+
+- 입력값을 변경할 때 일어나는 일
+  - React는 DOM <input>의 onChange에 지정된 함수를 찾는다. TemperatureInput의 handleChange 메서드에 해당한다.
+  - TemperatureInput의 handleChange는 새로 입력된 값과 함께 this.props.onTemperatureChange()를 호출한다.
+  - Calculator에서 어떤 입력 필드를 수정하느냐에 따라서 Calculator의 두 단위 변환 메서드 중 하나가 호출된다.
+  - 내부적으로 Calculator는 새 입력값, 단위로 this.setState()를 호출해서 React에게 자신을 재렌더링하도록 요청한다.
+  - React는 UI가 어떻게 보여야 하는지 알아내기 위해 Calculator 컴포넌트의 render 메서드를 호출한다.
+  - 두 입력 필드의 값은 현재 온도와 활성화된 단위를 기반으로 재계산된다. 온도의 변환이 이 단계에서 수행된다.
+  - React는 Calculator가 전달한 새 props와 함께 각 TemperatureInput의 render를 호출한다. (UI 알아내기 위해)
+  - React는 BoilingVerdict 컴포넌트에게 섭씨온도를 props로 건네면서 그 컴포넌트의 render 메서드를 호출한다.
+  - React DOM은 물의 끓는 여부와 올바른 입력값을 일치시키는 작업과 함께 DOM을 갱신한다.
+  - 값을 변경한 입력 필드는 현재 입력값을 그대로 받고, 다른 입력 필드는 변환된 온도 값으로 갱신된다.
+<br/>
+ 
