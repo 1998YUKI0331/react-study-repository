@@ -8,6 +8,7 @@
 7. [리스트와 Key](#7-리스트와-key)
 8. [폼](#8-폼)
 9. [State 끌어올리기](#9-state-끌어올리기)
+10. [합성 vs 상속](#10-합성-vs-상속)
 
 <br/>
 
@@ -925,5 +926,66 @@
   - React는 BoilingVerdict 컴포넌트에게 섭씨온도를 props로 건네면서 그 컴포넌트의 render 메서드를 호출한다.
   - React DOM은 물의 끓는 여부와 올바른 입력값을 일치시키는 작업과 함께 DOM을 갱신한다.
   - 값을 변경한 입력 필드는 현재 입력값을 그대로 받고, 다른 입력 필드는 변환된 온도 값으로 갱신된다.
+<br/>
+
+## 10. 합성 vs 상속
+- 리액트는 강력한 합성 모델을 가지고 있다.
+  - 개발자들은 종종 상속으로 인한 몇 가지 문제들을 만나며 합성을 통해 이러한 문제를 해결할 수 있다.
+  - 따라서 리액트는 상속 대신 합성을 사용하여 컴포넌트 간에 코드를 재사용하는 것을 권고한다.
+<br/>
+
+- 컴포넌트에서 다른 컴포넌트를 담기
+  ```javascript
+  function FancyBorder(props) {
+    return (
+      <div className={'FancyBorder FancyBorder-' + props.color}>
+        {props.children}
+      </div>
+    );
+  }
+  ```
+  ```javascript
+  function WelcomeDialog() {
+    return (
+      <FancyBorder color="blue">
+        <h1 className="Dialog-title">Welcome</h1>
+        <p className="Dialog-message">Thank you for visiting our spacecraft!</p>
+      </FancyBorder>  // <FancyBorder> JSX 안에 있는 것들이 FancyBorder 컴포넌트의 children prop으로 전달
+    );
+  }
+  ```
+  - 박스 역할을 하는 Sidebar, Dialog와 같은 컴포넌트에서는 어떤 엘리먼트가 들어올지 예상할 수 없는 경우가 있다.
+  - 이러한 컴포넌트에서는 children prop을 사용하여 자식 엘리먼트를 출력에 그대로 전달하는 것이 좋다.
+<br/>
+
+- 특수화
+  ```javascript
+  function FancyBorder(props) {
+    return (
+      <div className={'FancyBorder FancyBorder-' + props.color}>
+        {props.children}
+      </div>
+    );
+  }
+  ```
+  ```javascript
+  function Dialog(props) {
+    return (
+      <FancyBorder color="blue">
+        <h1 className="Dialog-title">{props.title}</h1>
+        <p className="Dialog-message">{props.message}</p>
+      </FancyBorder>
+    );
+  }
+  function WelcomeDialog() {
+    return (
+      <Dialog
+        title="Welcome"
+        message="Thank you for visiting our spacecraft!" />
+    );
+  }
+  ```
+  - 때로는 컴포넌트의 특수한 경우인 컴포넌트를 고려해야 한다. 예를 들어, WelcomeDialog는 Dialog의 특수한 경우다.
+  - 합성을 통해, 더 구체적인 컴포넌트가 일반적인 컴포넌트를 렌더링하고 props를 통해 내용을 구성한다.
 <br/>
  
