@@ -4,6 +4,11 @@
 3. [Components와 Props](#3-components와-props)
 4. [State와 생명주기](#4-state와-생명주기)
 5. [이벤트 처리하기](#5-이벤트-처리하기)
+6. [조건부 렌더링](#6-조건부-렌더링)
+7. [리스트와 Key](#7-리스트와-key)
+8. [폼](#8-폼)
+9. [State 끌어올리기](#9-state-끌어올리기)
+10. [합성 vs 상속](#10-합성-vs-상속)
 
 <br/>
 
@@ -420,4 +425,567 @@
   - 화살표 함수는 명시적으로 인자를 전달해야 하지만 bind를 사용할 경우 추가 인자가 자동으로 전달된다.
 <br/>
 
+## 6. 조건부 렌더링
+- React에서 조건부 렌더링은 JavaScript에서처럼 if 같은 조선부 연산자로 동작한다.
+  ```javascript
+  function Greeting(props) {
+    const isLoggedIn = props.isLoggedIn;
+    if (isLoggedIn) {
+      return <UserGreeting />; // 로그인 시 나타낼 컴포넌트
+    }
+    return <GuestGreeting />;  // 로그인 안했을 때 나타낼 컴포넌트
+  }
+  
+  ReactDOM.render(
+    <Greeting isLoggedIn={false} />, // Try changing to isLoggedIn={true}
+    document.getElementById('root')
+  );
+  ```
+  - 위 코드는 isLoggedIn prop에 따라서 다른 인사말(컴포넌트)을 렌더링 한다.
+<br/>
 
+- 엘리먼트 변수 사용하기 (컴포넌트의 일부만 조건부 렌더링)
+  ```javascript
+  class LoginControl extends React.Component {
+    constructor(props) {
+      super(props);
+      this.handleLoginClick = this.handleLoginClick.bind(this);
+      this.handleLogoutClick = this.handleLogoutClick.bind(this);
+      this.state = {isLoggedIn: false};
+    }
+    
+    handleLoginClick() { this.setState({isLoggedIn: true}); }
+    handleLogoutClick() { this.setState({isLoggedIn: false}); }
+    
+    render() {
+      const isLoggedIn = this.state.isLoggedIn;
+      let button;
+      if (isLoggedIn) {
+        button = <LogoutButton onClick={this.handleLogoutClick} />;
+      } else {
+        button = <LoginButton onClick={this.handleLoginClick} />;
+      }
+      
+      return (
+        <div>
+          <Greeting isLoggedIn={isLoggedIn} />
+          {button}
+        </div>
+      );
+    }
+  }
+  ```
+  - LoginControl 컴포넌트는 현재 상태에 맞게 <LoginButton />이나 <LogoutButton />을 렌더링한다.
+  - 또한 이전 예시에서의 <Greeting />도 함께 렌더링한다.
+<br/>
+
+- if문이 아닌 다른 조건부 연산자 사용하기
+  ```javascript
+  {unreadMessages.length > 0 &&
+    <h2>
+      You have {unreadMessages.length} unread messages.
+    </h2>
+  }
+  ```
+  ```javascript
+  {isLoggedIn
+    ? <LogoutButton onClick={this.handleLogoutClick} />
+    : <LoginButton onClick={this.handleLoginClick} />
+  }
+  ```
+  - && 뒤의 엘리먼트는 조건이 true일때 출력된다. 조건이 false라면 React는 무시하고 건너뛴다.
+  - condition ? true: false를 사용해서도 조건부 렌더링이 가능하다.
+<br/>
+
+- 컴포넌트가 렌더링하는 것을 막기
+  ```javascript
+  function WarningBanner(props) {
+    if (!props.warn) return null;
+    return (
+      <div className="warning">Warning!</div>
+    );
+  }
+  
+  class Page extends React.Component {
+    constructor(props) {
+      super(props);
+      this.state = {showWarning: true};
+      this.handleToggleClick = this.handleToggleClick.bind(this);
+    }
+  
+    handleToggleClick() {
+      this.setState(state => ({
+        showWarning: !state.showWarning
+      }));
+    }
+  
+    render() {
+      return (
+        <div>
+          <WarningBanner warn={this.state.showWarning} />
+          <button onClick={this.handleToggleClick}>
+            {this.state.showWarning ? 'Hide' : 'Show'}
+          </button>
+        </div>
+      );
+    }
+  }
+  ```
+  - 컴포넌트 자체를 숨기고 싶다면 렌더링 결과를 출력하는 대신 null을 반환해준다.
+  - 위 코드에서는 `<WarningBanner />`가 warn prop이 false라면 컴포넌트는 렌더링하지 않게 된다.
+  - 컴포넌트의 render에서 null을 반환하는 것은 생명주기 메서드 호출에 영향을 주지 않는다.
+<br/>
+
+## 7. 리스트와 Key
+- 여러개의 컴포넌트 렌더링 하기
+  ```javascript
+  const numbers = [1, 2, 3, 4, 5];
+  const listItems = numbers.map((numbers) =>
+    <li>{numbers}</li>
+  );
+  
+  ReactDOM.render(
+    <ul>{listItems}</ul>,
+    document.getElementById('root')
+  );
+  ```
+  - map() 함수로 numbers 배열에 대한 `<li>`엘리먼트를 반환하고 엘리먼트 배열을 listItems에 저장한다.
+  - 그리고 listItems 배열을 `<ul>`엘리먼트 안에 포함하고 DOM에 렌더링한다.
+<br/>
+
+- 기본 리스트 컴포넌트
+  ```javascript
+  function NumberList(props) {
+    const numbers = props.numbers;
+    const listItems = numbers.map((number) =>
+      <li key={number.toString()}>{number}</li>
+    );
+    return (
+      <ul>{listItems}</ul>
+    );
+  }
+
+  const numbers = [1, 2, 3, 4, 5];
+  ReactDOM.render(
+    <NumberList numbers={numbers} />,
+    document.getElementById('root')
+  );
+  ```
+  - 앞선, 여러개의 컴포넌트 렌더링 하기 예제를 하나의 컴포넌트 안에서 렌더링 되도록 리팩토링 한 것이다.
+  - 리스트에는 key(엘리먼트 리스트를 만들 때 포함해야 하는 특수한 문자열 어트리뷰트)가 필요하다.
+<br/>
+
+- Key는 React가 어떤 항목을 변경, 추가 또는 삭제할지 식별하는 것을 돕는다.
+  ```javascript
+  const todoItems = todos.map((todo) =>
+    <li key={todo.id}>
+      {todo.text}
+    </li>
+  );
+  ```
+  - key는 엘리먼트에 안정적인 고유성을 부여하기 위해 배열 내부의 엘리먼트에 지정해야 한다.
+  - 데이터의 ID와 같은 리스트의 다른 항목들에서 항목을 고유하게 식별할 수 있는 문자열을 Key로 선택한다.
+  - 항목의 순서가 바뀔 수 있는 경우 key에 리스트 인덱스를 사용하는 것은 권장하지 않는다.
+<br/>
+
+- Key로 컴포넌트 추출하기
+  ```javascript
+  function ListItem(props) {
+    return <li>{props.value}</li>; // 맞습니다! 여기에는 key를 지정할 필요가 없습니다.
+  }
+  
+  function NumberList(props) {
+    const numbers = props.numbers;
+    const listItems = numbers.map((number) =>
+      <ListItem key={number.toString()} value={number} /> // 맞습니다! 배열 안에 key를 지정해야 합니다.
+    );
+    return (
+      <ul>{listItems}</ul>
+    );
+  }
+  
+  const numbers = [1, 2, 3, 4, 5];
+  ReactDOM.render(
+    <NumberList numbers={numbers} />,
+    document.getElementById('root')
+  );
+  ```
+  - 키는 주변 배열의 context에서만 의미가 있다. (배열을 직접 쓰는 map안에서는 꼭 Key 지정)
+  - ListItem 컴포넌트 안 `<li>` 엘리먼트가 아니라 `<ListItem />` 엘리먼트가 key를 가져야 한다.
+<br/>
+
+- Key는 형제 사이에서만 고유한 값이어야 한다.
+  ```javascript
+  const content = posts.map((post) =>
+    <Post
+      key={post.id}
+      id={post.id}
+      title={post.title} />
+  );
+  ```
+  - Key는 전역적으로 고유할 필요는 없다. 두 개의 다른 배열을 만들 때 동일한 key를 사용할 수 있다.
+  - key는 컴포넌트로 전달되지 않는다. 컴포넌트에서 key가 필요하면 다른 이름의 prop으로 명시적으로 전달한다.
+  - 위 예시에서 Post 컴포넌트는 props.id를 읽을 수 있지만 props.key는 읽을 수 없다.
+<br/>
+
+- JSX에 map() 포함시키기
+  ```javascript
+  function NumberList(props) {
+    const numbers = props.numbers;
+    return (
+      <ul>
+        {numbers.map((number) =>
+          <ListItem key={number.toString()} value={number} />
+        )}
+      </ul>
+    );
+  }
+  ```
+  - JSX를 사용하면 { } 안에 map() 함수의 결과를 인라인 처리할 수 있다.
+  - 하지만 이 방식을 남발하는 것은 좋지 않다. 가독성을 위해 변수로 추출할지, 인라인으로 넣을지는 개발자가 판단해야 한다.
+  - map() 함수가 너무 중첩된다면 컴포넌트로 추출하는 것이 좋다.
+<br/>
+
+## 8. 폼
+- 신뢰 가능한 단일 출처 (single source of truth)
+  - HTML에서 <input>, <textarea>와 같은 폼 엘리먼트는 일반적으로 사용자의 입력을 기반으로 state를 관리하고 업데이트한다.
+  - React에서는 변경할 수 있는 state가 일반적으로 컴포넌트의 state 속성에 유지되며 setState()에 의해 업데이트된다.
+<br/>
+  
+- 제어 컴포넌트 (Controlled Component)
+  ```javascript
+  class NameForm extends React.Component {
+    constructor(props) {
+      super(props);
+      this.state = {value: ''}; // name
+      
+      this.handleChange = this.handleChange.bind(this);
+      this.handleSubmit = this.handleSubmit.bind(this);
+    }
+    
+    handleChange(event) {
+      this.setState({value: event.target.value});
+    }
+    
+    handleSubmit(event) {
+      alert('A name was submitted: ' + this.state.value);
+      event.preventDefault();
+    }
+  
+    render() {
+      return (
+        <form onSubmit={this.handleSubmit}>
+          <label>
+            Name:
+            <input type="text" value={this.state.value} onChange={this.handleChange} />
+          </label>
+          <input type="submit" value="Submit" />
+        </form>
+      );
+    }
+  }
+  ```
+  - value는 폼 엘리먼트에 설정되므로 항상 this.state.value가 표시되며 React state는 신뢰 가능한 단일 출처가 된다.
+  - state를 업데이트하기 위해 모든 키 입력에서 handleChange가 동작해서 사용자가 입력할 때 보여지는 값이 업데이트된다.
+<br/>
+
+- textarea 태그
+  ```javascript
+  <textarea value={this.state.value} onChange={this.handleChange} />
+  ```
+  - HTML에서 `<textarea>`는 텍스트를 자식으로 정의하지만 React에서 `<textarea>`는 value 어트리뷰트를 대신 사용한다.
+<br/>
+
+- select 태그
+  ```javascript
+  this.state = {value: 'coconut'};
+
+  <select value={this.state.value} onChange={this.handleChange}>
+    <option value="grapefruit">Grapefruit</option>
+    <option value="lime">Lime</option>
+    <option value="coconut">Coconut</option>
+    <option value="mango">Mango</option>
+  </select>
+  ```
+  - HTML에서 `<select>`의 selected 옵션은 해당 사항을 초기값으로 설정해주는 어트리뷰트다.
+  - React에서는 selected 어트리뷰트를 사용하는 대신 최상단 select태그에 value 어트리뷰트를 사용한다.
+<br/>
+
+- file input 태그
+  ```javascript
+  <input type="file" />
+  ```
+  - 파일은 값이 읽기 전용이기 때문에 React에서는 비제어 컴포넌트이다.
+<br/>
+
+- 다중 입력 제어하기
+  ```javascript
+  class Reservation extends React.Component {
+    constructor(props) {
+      super(props);
+      this.state = {
+        isGoing: true,
+        numberOfGuests: 2
+      };
+      this.handleInputChange = this.handleInputChange.bind(this);
+    }
+    
+    handleInputChange(event) {
+      const target = event.target;
+      const value = target.type === 'checkbox' ? target.checked : target.value;
+      const name = target.name;
+      
+      this.setState({
+        [name]: value // 주어진 name에 일치하는 state 업데이트 하기 위해 computed property name 구문
+      });
+    }
+
+    render() {
+      return (
+        <form>
+          <label>
+            Is going:
+            <input
+              name="isGoing"
+              type="checkbox"
+              checked={this.state.isGoing}
+              onChange={this.handleInputChange} />
+          </label><br />
+          <label>
+            Number of guests:
+            <input
+              name="numberOfGuests"
+              type="number"
+              value={this.state.numberOfGuests}
+              onChange={this.handleInputChange} />
+          </label>
+        </form>
+      );
+    }
+  }
+  ```
+  - 여러 input 제어 시, 각 엘리먼트에 name 어트리뷰트를 추가하고 event.target.name으로 핸들러가 판단한다.
+  - setState()는 자동적으로 현재 state에 일부 state를 병합하기 때문에 바뀐 부분에 대해서만 호출하면 된다.
+<br/>
+
+- 제어되는 Input Null 값
+  ```javascript
+  ReactDOM.render(<input value="hi" />, mountNode); // 잠겨있지만
+
+  setTimeout(function() {
+    ReactDOM.render(<input value={null} />, mountNode); // 수정 가능해짐
+  }, 1000);
+  ```
+  - 제어 컴포넌트에 value prop을 지정하면 의도하지 않는 한 사용자가 변경할 수 없다.
+  - value를 설정했는데 여전히 수정할 수 있다면 실수로 value를 undefined나 null로 설정했을 수 있다.
+<br/>
+
+## 9. State 끌어올리기
+- 언제 하면 좋나
+  - 종종 동일한 데이터에 대한 변경사항을 여러 컴포넌트에 반영해야 할 필요가 있다.
+  - 이럴 때는 공통 조상으로 state를 끌어올리는 것이 좋다.
+<br/>
+
+- 두 번째 Input 추가하기
+  ```javascript
+  const scaleNames = {
+    c: 'Celsius',
+    f: 'Fahrenheit'
+  };
+  
+  class TemperatureInput extends React.Component {
+    constructor(props) {
+      super(props);
+      this.handleChange = this.handleChange.bind(this);
+      this.state = {temperature: ''};
+    }
+  
+    handleChange(e) {
+      this.setState({temperature: e.target.value});
+    }
+  
+    render() {
+      const temperature = this.state.temperature;
+      const scale = this.props.scale;
+      return (
+        <fieldset>
+          <legend>Enter temperature in {scaleNames[scale]}:</legend>
+          <input value={temperature} onChange={this.handleChange} />
+        </fieldset>
+      );
+    }
+  }
+  ```
+  ```javascript
+  class Calculator extends React.Component {
+    render() {
+      return (
+        <div>
+          <TemperatureInput scale="c" />
+          <TemperatureInput scale="f" />
+        </div>
+      );
+    }
+  }
+  ```
+  - Calculator에서 TemperatureInput 컴포넌트를 빼서 Calculator가 분리된 두 개의 온도 입력 필드를 렌더링한다.
+  - 그러나 Calculator에서 BoilingVerdict에게 온도를 전해줄 수 없다.
+  - 현재 입력된 온도 정보가 TemperatureInput 안에 숨겨져 있으므로 Calculator는 그 값을 알 수 없기 때문이다.
+<br/>
+
+- State 끌어올리기
+  - 섭씨와 화씨가 서로 동기되도록 하고 싶다면 가까운 공통 조상으로 state를 끌어올린다.
+  - TemperatureInput이 개별적으로 가지고 있던 지역 state를 지우고 Calculator로 그 값을 옮겨놓는다.
+  - Calculator는 두 입력 필드의 현재 온도에 대한 진리의 원천(source of truth)이 된다.
+  - 두 TemperatureInput의 props가 같은 부모인 Calculator로부터 전달되기 때문에 항상 동기화된 상태를 유지한다.
+<br/>
+
+- TemperatureInput 변경
+  ```javascript
+  class TemperatureInput extends React.Component {
+    constructor(props) {
+      super(props);
+      this.handleChange = this.handleChange.bind(this);
+    }
+    
+    handleChange(e) {
+      this.props.onTemperatureChange(e.target.value); // Before: this.setState({temperature: e.target.value});
+    }
+  
+    render() {
+      const temperature = this.props.temperature; // Before: const temperature = this.state.temperature;
+      const scale = this.props.scale;
+      return (
+        <fieldset>
+          <legend>Enter temperature in {scaleNames[scale]}:</legend>
+          <input value={temperature} onChange={this.handleChange} />
+        </fieldset>
+      );
+    }
+  }
+  ```
+  - TemperatureInput 컴포넌트에서 this.state.temperature를 this.props.temperature로 대체한다.
+  - props는 읽기 전용이다. 따라서 onTemperatureChange로 이 컴포넌트를 제어가능하게 만들어야 한다.
+  - TemperatureInput은 temperature와 onTemperatureChange props를 부모인 Calculator로부터 건네받을 수 있다.
+  - 이제 TemperatureInput에서 온도를 갱신하고 싶으면 this.props.onTemperatureChange를 호출하면 된다.
+  - onTemperatureChange prop은 부모 컴포넌트인 Calculator로부터 temperature prop와 함께 제공된다.
+<br/>
+
+- Calculator 변경
+  ```javascript
+  class Calculator extends React.Component {
+    constructor(props) {
+      super(props);
+      this.handleCelsiusChange = this.handleCelsiusChange.bind(this);
+      this.handleFahrenheitChange = this.handleFahrenheitChange.bind(this);
+      this.state = {temperature: '', scale: 'c'};
+    }
+  
+    handleCelsiusChange(temperature) {
+      this.setState({scale: 'c', temperature});
+    }
+    handleFahrenheitChange(temperature) {
+      this.setState({scale: 'f', temperature});
+    }
+    
+    render() {
+      const scale = this.state.scale;
+      const temperature = this.state.temperature;
+      const celsius = scale === 'f' ? tryConvert(temperature, toCelsius) : temperature;
+      const fahrenheit = scale === 'c' ? tryConvert(temperature, toFahrenheit) : temperature;
+
+      return (
+        <div>
+          <TemperatureInput
+            scale="c" 
+            temperature={celsius}
+            onTemperatureChange={this.handleCelsiusChange} />
+          <TemperatureInput
+            scale="f"
+            temperature={fahrenheit}
+            onTemperatureChange={this.handleFahrenheitChange} />
+          <BoilingVerdict
+            celsius={parseFloat(celsius)} />
+        </div>
+      );
+    }
+  }
+  ```
+  - 두 입력 필드를 모두 저장하는 건 불필요하다. 최근의 입력값과 단위만 저장하면 된다.
+  - 어떤 입력 필드를 수정하든 간에 Calculator의 this.state.temperature와 this.state.scale이 갱신된다.
+<br/>
+
+- 입력값을 변경할 때 일어나는 일
+  - React는 DOM <input>의 onChange에 지정된 함수를 찾는다. TemperatureInput의 handleChange 메서드에 해당한다.
+  - TemperatureInput의 handleChange는 새로 입력된 값과 함께 this.props.onTemperatureChange()를 호출한다.
+  - Calculator에서 어떤 입력 필드를 수정하느냐에 따라서 Calculator의 두 단위 변환 메서드 중 하나가 호출된다.
+  - 내부적으로 Calculator는 새 입력값, 단위로 this.setState()를 호출해서 React에게 자신을 재렌더링하도록 요청한다.
+  - React는 UI가 어떻게 보여야 하는지 알아내기 위해 Calculator 컴포넌트의 render 메서드를 호출한다.
+  - 두 입력 필드의 값은 현재 온도와 활성화된 단위를 기반으로 재계산된다. 온도의 변환이 이 단계에서 수행된다.
+  - React는 Calculator가 전달한 새 props와 함께 각 TemperatureInput의 render를 호출한다. (UI 알아내기 위해)
+  - React는 BoilingVerdict 컴포넌트에게 섭씨온도를 props로 건네면서 그 컴포넌트의 render 메서드를 호출한다.
+  - React DOM은 물의 끓는 여부와 올바른 입력값을 일치시키는 작업과 함께 DOM을 갱신한다.
+  - 값을 변경한 입력 필드는 현재 입력값을 그대로 받고, 다른 입력 필드는 변환된 온도 값으로 갱신된다.
+<br/>
+
+## 10. 합성 vs 상속
+- 리액트는 강력한 합성 모델을 가지고 있다.
+  - 개발자들은 종종 상속으로 인한 몇 가지 문제들을 만나며 합성을 통해 이러한 문제를 해결할 수 있다.
+  - 따라서 리액트는 상속 대신 합성을 사용하여 컴포넌트 간에 코드를 재사용하는 것을 권고한다.
+<br/>
+
+- 컴포넌트에서 다른 컴포넌트를 담기
+  ```javascript
+  function FancyBorder(props) {
+    return (
+      <div className={'FancyBorder FancyBorder-' + props.color}>
+        {props.children}
+      </div>
+    );
+  }
+  ```
+  ```javascript
+  function WelcomeDialog() {
+    return (
+      <FancyBorder color="blue">
+        <h1 className="Dialog-title">Welcome</h1>
+        <p className="Dialog-message">Thank you for visiting our spacecraft!</p>
+      </FancyBorder>  // <FancyBorder> JSX 안에 있는 것들이 FancyBorder 컴포넌트의 children prop으로 전달
+    );
+  }
+  ```
+  - 박스 역할을 하는 Sidebar, Dialog와 같은 컴포넌트에서는 어떤 엘리먼트가 들어올지 예상할 수 없는 경우가 있다.
+  - 이러한 컴포넌트에서는 children prop을 사용하여 자식 엘리먼트를 출력에 그대로 전달하는 것이 좋다.
+<br/>
+
+- 특수화
+  ```javascript
+  function FancyBorder(props) {
+    return (
+      <div className={'FancyBorder FancyBorder-' + props.color}>
+        {props.children}
+      </div>
+    );
+  }
+  ```
+  ```javascript
+  function Dialog(props) {
+    return (
+      <FancyBorder color="blue">
+        <h1 className="Dialog-title">{props.title}</h1>
+        <p className="Dialog-message">{props.message}</p>
+      </FancyBorder>
+    );
+  }
+  function WelcomeDialog() {
+    return (
+      <Dialog
+        title="Welcome"
+        message="Thank you for visiting our spacecraft!" />
+    );
+  }
+  ```
+  - 때로는 컴포넌트의 특수한 경우인 컴포넌트를 고려해야 한다. 예를 들어, WelcomeDialog는 Dialog의 특수한 경우다.
+  - 합성을 통해, 더 구체적인 컴포넌트가 일반적인 컴포넌트를 렌더링하고 props를 통해 내용을 구성한다.
+<br/>
+ 
