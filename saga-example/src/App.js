@@ -13,6 +13,7 @@ function App() {
 
   return (
     <div className = "App">
+      <h1>{result[0].title}</h1>
     </div>
   );
 }

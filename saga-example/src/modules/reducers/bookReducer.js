@@ -1,7 +1,7 @@
 const books = (state = [], action) => {
     switch(action.type){
         case "LOAD_BOOK_SUCCESS":
-            return [...state, ...action.books];
+            return [...state, ...action.books.documents];
         case "LOAD_BOOK_FAIL":
             return [...state, action.error];
         default:
