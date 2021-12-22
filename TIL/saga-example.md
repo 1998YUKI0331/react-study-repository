@@ -44,6 +44,14 @@
 
   export default rootSaga;
   ```
-  - takeEvery는 dispatch에 의해 action.type이 "LOAD_COURIER'인 객체가 올 때 getBook을 실행시키라는 의미.
+  - takeEvery는 dispatch에 의해 action.type이 "LOAD_BOOK'인 객체가 올 때 getBook을 실행시키라는 의미.
   - getBook에서는 call로 api를 호출하고 put으로 dispatch한다.
   - call 함수의 인자는 Promise를 반환해야 한다. (/api/index.js에서 axios.get()을 리턴하고 있어서 잘 됨)
+<br/>
+
+- redux saga의 흐름
+  - View에서 action 발생. 그럼 dispatch()에서 action이 일어남.
+  - action에 의한 reducer 함수가 실행되기 전에 middleware가 작동.
+  - middleware에서 정의한 일을 수행하고 난뒤, reducer 함수를 실행.
+  - reducer의 실행결과인 새로운 값을 store에 저장.
+  - store의 state에 subscribe하고 있던 UI에 변경된 값을 전달.
